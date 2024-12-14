@@ -1,0 +1,224 @@
+---
+title: "Treatment Impact on Employment Outcome"
+author: "Avianna Bui"
+date: "2024-10-20"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE, message = F, warning=F}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(labelled)
+library(haven)
+library(naniar)
+library(mde)
+library(vip)
+library(tidymodels)
+library(ranger)
+library(randomForest)
+library(mlbench)
+library(ggmosaic)
+library(probably)
+tidymodels_prefer()
+```
+
+# Load data
+
+```{r}
+df <- get(load("tedsd_puf_2021_r.RData")) %>%
+  mutate(across(everything(), haven::as_factor))
+```
+
+## Data Cleaning for Random Forest Model
+
+```{r, message = F, warning=F}
+ml_data <- df %>%
+  select(c(EDUC, MARSTAT, RACE, ETHNIC, AGE, GENDER, VET, EMPLOY, EMPLOY_D, LIVARAG_D, LIVARAG, FREQ1_D, FREQ1, FRSTUSE1, PSOURCE, DSMCRIT, STFIPS, PSYPROB, HLTHINS, NOPRIOR, ARRESTS_D, LOS, SERVICES, SUB1, SUB2, SUB3, FREQ_ATND_SELF_HELP_D, METHUSE, REASON)) %>%
+  recode_as_na(value = -9) %>%
+  drop_na() %>%
+  filter(!EMPLOY == "Not in labor force") %>% # filter out people not in labor force
+  filter(!EMPLOY_D == "Not in labor force") %>% 
+  filter(REASON == "Treatment completed") %>% # keep only people who completed treatment
+  select(-c(REASON)) %>%
+  mutate(EMPLOY = if_else(EMPLOY == "Unemployed", "Unemployed", "Employed")) %>%
+  mutate(EMPLOY_D = factor(if_else(EMPLOY_D == "Unemployed", "Unemployed", "Employed"))) %>%
+  mutate(SUB2 = factor(if_else(SUB2 == "None", "N", "Y"))) %>%
+  mutate(SUB3 = factor(if_else(SUB3 == "None", "N", "Y")))
+
+#dim(ml_data)
+```
+
+## Build Random Forest Model
+
+```{r}
+set.seed(1111)
+rf_spec <- rand_forest() %>%
+  set_engine(engine = 'ranger') %>% 
+  set_args(mtry = NULL, 
+           trees = 500, 
+           min_n = 2,
+           probability = FALSE, 
+           importance = 'impurity') %>% 
+  set_mode('classification') 
+
+data_rec <- recipe(EMPLOY_D ~ ., data = ml_data) # predict employment at discharge
+
+data_wf <- workflow() %>%
+  add_model(rf_spec) %>%
+  add_recipe(data_rec)
+
+rf_fit <- fit(data_wf, data = ml_data)
+
+rf_fit
+```
+
+## Model Evaluation
+
+> Result: On average, we can correctly predict employment at discharge for new substance use patients outside the datasets around 92.6% of the times
+
+```{r}
+rf_OOB_output <- function(fit_model, model_label, truth){
+    tibble(
+          .pred_Unemployed = fit_model %>% extract_fit_engine() %>% pluck('predictions'), #OOB predictions
+          EMPLOY_D = truth,
+          label = model_label
+      )
+}
+
+output <- rf_OOB_output(rf_fit, "test", ml_data %>% pull(EMPLOY_D))
+
+output %>% 
+    accuracy(truth = EMPLOY_D, estimate = .pred_Unemployed) # print accuracy
+```
+
+## Feature Importance
+
+> Result: An individual's employment status at admission holds the highest predictive ability to help predict employment at discharge, followed by treatment services type at admission and length of stay, which are the 2 treatment-related variables I will focus on examining in my visualization. Housing status at discharge and admission, as well as the clients' state also have high predictive power
+
+```{r}
+rf_fit %>% 
+    extract_fit_engine() %>% 
+    vip(num_features = 6, mapping = aes(fill = .data[["Variable"]])) +
+    scale_x_discrete("",
+                     labels = c(
+                        "EMPLOY" = "EMPLOYMENT AT ADMISSION",
+                        "LOS" = "LENGTH OF STAY",
+                        "SERVICES" = "SERVICES AT ADMISSION",
+                        "LIVARAG_D" = "HOUSING AT DISCHARGE",
+                        "STFIPS" = "STATE",
+                        "LIVARAG" = "HOUSING AT ADMISSION",
+                        "REASON" = "REASON FOR DISCHARGE"
+                      )) +
+    scale_fill_manual(values = c("grey", "grey", "grey" ,"#A94064" ,"#A94064" ,"grey" )) +
+    labs(title = "Top 6 Most Important Variables in Predicting Employment at Discharge") +
+    theme_classic() +
+    theme(legend.position = "none",
+          plot.title = element_text(face = "bold", size = 11))
+```
+
+
+# Data Visualization
+
+## Data Cleaning
+```{r, warning = F, message = F}
+df_viz <- df %>%
+  select(EMPLOY, EMPLOY_D, LOS, REASON, SERVICES) %>%
+  filter(REASON == "Treatment completed") %>% # keep only patients who completed treatment
+  filter(!EMPLOY %in% c("-9", "Not in labor force")) %>%
+  filter(!EMPLOY_D %in% c("-9", "Not in labor force")) %>%
+  mutate(EMPLOYMENT = if_else(EMPLOY == "Unemployed", "Unemployed", "Employed")) %>%
+  mutate(EMPLOYMENT_D = if_else(EMPLOY_D == "Unemployed", "Unemployed", "Employed")) %>%
+  mutate(lengthOfStay = case_when(as.numeric(LOS) <= 30 ~ "Under 1 month",
+                                  LOS %in% c("31 to 45 days","46 to 60 days","61 to 90 days") ~ "30-90 days",
+                                  LOS %in% c("91 to 120 days", "121 to 180 days", "181 to 365 days", "More than a year") ~ "Over 90 days")) %>%
+  mutate(lengthOfStay = fct_relevel(lengthOfStay, c("Under 1 month", "30-90 days", "Over 90 days"))) %>%
+  mutate(EMPLOYMENT_CHANGE = case_when((EMPLOYMENT_D == "Unemployed" & EMPLOYMENT == "Unemployed") |  (EMPLOYMENT_D == "Employed" & EMPLOYMENT == "Employed") ~ "Same",
+                             EMPLOYMENT_D == "Unemployed" & EMPLOYMENT == "Employed" ~ "Worse",
+                             EMPLOYMENT_D == "Employed" & EMPLOYMENT == "Unemployed" ~ "Improved")) %>%
+  mutate(EMPLOYMENT_CHANGE = fct_relevel(EMPLOYMENT_CHANGE, c("Improved", "Same", "Worse"))) %>%
+  mutate(SERVICES = case_when(SERVICES %in% c("Detox, 24-hour, hospital inpatient", "Detox, 24-hour, free-standing residential") ~ "Detox, 24-hour",
+                              SERVICES %in% c("Rehab/residential, hospital (non-detox)", "Rehab/residential, short term (30 days or fewer)", "Rehab/residential, long term (more than 30 days)") ~ "Rehab/residential", 
+                              SERVICES %in% c("Ambulatory, intensive outpatient", "Ambulatory, non-intensive outpatient", "Ambulatory, detoxification") ~ "Ambulatory")) %>%
+  mutate(SERVICES = fct_relevel(SERVICES, c("Detox, 24-hour", "Rehab/residential", "Ambulatory")))
+```
+
+## Visualization: Length of Stay & Employment Outcome
+
+> Result: The employment outcome for the majority of patients after treatment remains similar to their employment status at admission. Nonetheless, longer length of stay demonstrates a positive relationship with employment outcome, since unemployed people at admission with treatment length over a month, especially those with over 90 days of stays, are more likely to become employed at discharge.  
+
+```{r}
+df_viz %>%
+  count(lengthOfStay, EMPLOYMENT_CHANGE) %>%
+  group_by(lengthOfStay) %>%
+  mutate(proportion = n / sum(n)) %>%
+  mutate(EMPLOYMENT_CHANGE = factor(EMPLOYMENT_CHANGE, levels = c("Worse", "Same", "Improved"))) %>%
+  ggplot(aes(x = lengthOfStay, y = proportion, fill = EMPLOYMENT_CHANGE)) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)),
+            position = position_fill(vjust = 0.5), size = 3) +
+  labs(
+    title = "Impact of Length of Stay on Employment Change",
+    x = "Length of Stay",
+    y = "Proportion of Patients",
+    fill = "Change in Employment"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Improved" = "darkgreen",  # Green for improvement
+      "Same" = "#D3D3D3",        # Gray for same
+      "Worse" = "red"            # Red for worse
+    )
+  ) +
+  theme_bw() +
+  coord_flip() +
+    theme(
+    legend.position = "bottom",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(face = "bold", size = 12, hjust = 0.5),
+    plot.subtitle = element_text(face = "italic", hjust = 0.5, size = 11)
+  )
+```
+
+## Visualization: Treatment Services at Admission & Employment Outcome
+
+> Result: People admitted to ambulatory care setting are more likely to improve their employment outcome after treatment. Meanwhile, a higher proportion of clients admitted to rehab/residential treatment setting turns unemployed after their discharge. We hypothesize that this happens due to the fact that the inpatient nature of rehab/residential treatment requires clients to skip work, coupled with a lack of opportunities to network and interview for new jobs, causes clients to lose their employment and unable to find new jobs
+
+```{r warning = F}
+df_viz %>%
+  count(SERVICES, EMPLOYMENT_CHANGE) %>%
+  group_by(SERVICES) %>%
+  mutate(proportion = n / sum(n)) %>%
+  mutate(EMPLOYMENT_CHANGE = factor(EMPLOYMENT_CHANGE, levels = c("Worse", "Same", "Improved"))) %>%
+  ggplot(aes(x = SERVICES, y = proportion, fill = EMPLOYMENT_CHANGE)) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)),
+            position = position_fill(vjust = 0.5), size = 3) +
+  labs(
+    title = "Impact of Treatment Services at Admission on Employment Change",
+    x = "Services",
+    y = "Proportion of Patients",
+    fill = "Change in Employment"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Improved" = "darkgreen",  # Green for improvement
+      "Same" = "#D3D3D3",        # Gray for same
+      "Worse" = "red"            # Red for worse
+    )
+  ) +
+  theme_bw() +
+  coord_flip() +
+    theme(
+    legend.position = "bottom",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(face = "bold", size = 12, hjust = 0.5),
+    plot.subtitle = element_text(face = "italic", hjust = 0.5, size = 11)
+  )
+```
+
