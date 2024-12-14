@@ -1,0 +1,210 @@
+How Substance Abuse Treatment Impacts Quality of Life in Public-Funded
+Facilities
+================
+Avianna Bui, Ethan Caldecott, Miles Libbey
+
+##### Project Area: Healthcare & Psychology
+
+## Research Question & Motivation
+
+Our research question centers on examining how treatment-related factors
+influence quality of life outcomes, from admission to discharge, in
+public substance abuse facilities. By identifying key treatment-related
+factors that impact the quality of life for individuals undergoing
+substance use treatment in public facilities, we want to potentially
+pinpoint means or approaches to improve the efficacy of substance use
+treatment to different needs. Ideally, understanding the
+mechanisms/relationship between treatment and life outcomes can improve
+long-term recovery and relapse-prevention prospects for substance abuse
+patients.
+
+## Data Source & Description
+
+### Instructions on Downloading the Data
+
+The dataset we use in our analysis is the Substance Abuse and Mental
+Health Services Administration (SAMHSA)’s Treatment Episode Data Set in
+2021, which can be accessed at this link:
+<https://www.samhsa.gov/data/data-we-collect/teds/datafiles?puf_id=47368&data_collection=1022>.
+To download the dataset, select “TEDS-D 2021” for “Choose a dataset” as
+indicated in the image below, and click on the download link for R to
+download the dataset in .rdata format.
+
+![](download_instructions.png)
+
+### Data Context
+
+Our dataset is SAMHSA’s Treatment Episode Data Set in 2021, which
+includes client-level data of patients aged 12 or older who undergoes
+treatment in public-affiliated substance abuse facilities. While
+different states may have different operational regulations for these
+facilities, most facilities in the dataset receives government aid,
+whether that be an official state rehabilitation facility to a community
+clinic.
+
+The original dataset has in total around 1.3 million records with 76
+variables, coding every variable as a numeric category, with -9
+representing missing, invalid, or “other” data, while numbers from 1 to
+n representing the various levels in each category. For the purpose of
+our analysis, we only keep clients who have completed their treatment in
+the dataset to be able to reliably infer the treatment impact on
+clients.
+
+Of the 76 variables in the dataset, we subsetted it to just 28 variables
+based on what we theorize to have a high explanatory power on clients’
+quality of life based on conversations with experts in an effort to
+capture a wide scope of impact. The variables correspond to 4
+categories:
+
+1.  **Demographic factors**: Education, Race, Marital Status, etc.
+
+2.  **Treatment-related factors**: what substances clients use, how
+    frequently, when they first started using, their length of stay, and
+    reason for leaving, etc. Treatment-related variables referred to
+    anything that provided insight into what happened during a client’s
+    stay. We focus on the treatment-related variables with strong
+    predictive power on life outcomes of patients since our research
+    questions try to examine which treatment factors might help improve
+    the quality of life in patients. Notably, we transform our length of
+    stay treatment variables in the analyses to comprise 3 levels: Under
+    1 month, 30 - 90 days, and 90 days. The 90 days, or 12 weeks, time
+    point is hypothesized to be significant in predicting employment
+    outcome since The Americans with Disabilities Act (ADA) and The
+    Family and Medical Leave Act (FMLA) allows job protection for 12
+    weeks for medical reasons.
+
+3.  **Other non-treatment variables** such as clients’ mental health
+    diagnoses and secondary & tertiary substance use. It should be noted
+    that SUB2 and SUB3, the 2 variables listing a client’s secondary and
+    tertiary substances, were converted into binary variables based on
+    whether a substance was listed in that category. We primarily focus
+    on the primary substance the client was diagnosed with since we
+    learned from our experts that treatment plans, especially in public
+    clinical settings, mostly focus on treating the primary substance
+    diagnoses rather than any supplemental ones.
+
+4.  **Outcome variables**: housing, employment status, and frequency of
+    substance use at admission and discharge. Our outcome variables were
+    the dataset’s most tangible life outcome variables, each indicating
+    a different aspect of life before and after a client’s stay in the
+    facilities.
+
+## Results
+
+The individual result and interpretations of our project in each quality
+of life indicators (frequency of use, housing status, and employment
+status at discharge) are included in corresponding .rmd files included
+in the Github repository.
+
+**Overall summary of results**:
+
+Length of stay was one of the highest-ranking treatment variables across
+our 3 models. Looking deeper, we see that Length of Stay interacts with
+our 3 outcome variables. In terms of frequency of use, we see a decrease
+in improvement percentage for less than 30-day length of stay relative
+to both higher lengths of stay. However, less than 30 days also has the
+lowest rate, indicating that out of all the lengths of stay, we rarely
+see people’s usage worsen during a stay of less than 30 days. The best
+improvement percentage was 30-90 days, which seems to be the optimal
+length of stay. When we increase above 90 days, we have a decrease in
+improvement and a reduction in worsening. The rationale is as follows:
+in a short setting, the focus is on detoxification and stabilization
+with minimal time for behavioral change, leading to low improvement but
+also low worsening as not there for a long time. 30-90 days provide the
+optimal balance of time for meaningful therapy, skill-building, and
+habit formation, leading to the highest improvement percentages. More
+than 90 where we see the need for long-term care can reduce the
+incremental improvement the care is providing, leading to less effective
+treatment, which can be due to “harder” to fix patients that take
+longer, and we see less improvement in them.
+
+In both housing status and employment, we see a trend where the length
+of stay increases, and the improvement percentage increases. We also see
+the worst percentage decrease or stay the same as the length of stay
+increases. Both of these indicate that as the length of stay increases,
+patients are better off in terms of housing status and employment. The
+reason for this could come from the long-term nature of housing and
+employment as people need time to move (waiting on the relator and the
+buying process) and time to find a job (waiting on a company to hire
+you), whereas the frequency of use no time element is dependent on other
+people. This could also come from the stability that more extended
+treatment gives patients, allowing them a supportive environment to
+focus on themselves and thus giving them the time and resources to focus
+on housing and employment. Further rationale for the difference between
+these and frequency of use is that frequency of use is directly tied to
+behavioral and physical factors, which can show improvement relatively
+quickly within the first 90 days; however, after 90 days, the
+improvement frequency can drop because those immediate behavioral and
+physical factors changes have already occurred early on and didn’t work
+thus indicating a “harder” patient.
+
+When it comes to the impact of treatment services and quality of life,
+we notice that ambulatory care setting (outpatient treatment) has a
+greater positive impact on employment outcome compared to rehab
+(inpatient) care, yet the reverse trend happens for frequency of use and
+housing status at discharge. For detox, its minimal impact on employment
+outcome may be due to the relatively shorter treatment length. The
+negative impact of inpatient care on employment outcome might be due to
+the fact that the inpatient nature of rehab/residential treatment
+requires clients to skip work, coupled with a lack of opportunities to
+network and interview for new jobs, causes clients to lose their
+employment and become unable to find new jobs. However, outpatient
+setting provides less medical support for detoxification, less intensive
+treatment, while patients have easier access to substances. As a result,
+inpatient care or intensive detox treatment is likely to be more
+effective than ambulatory care in terms of reducing frequency of
+substance usage.
+
+Regarding housing status, a higher proportion of clients under
+rehab/residential treatment become both better and worse in terms of
+their living arrangements compared to those admitted to ambulatory or
+detox treatment. While the critical nature of rehab may signify more
+severe substance abuse problems in clients, which may lead to
+difficulties in retaining and applying for housing, there are also
+recovery housing programs that can assist those completing
+rehab/residential treatment with accommodations e.g. the U.S. Department
+of Housing’s Recovery Housing Program provides eligible individuals in
+recovery from substance use disorder with transitional housing for up to
+2 years. Such programs are likely to vary by the clients’ state
+regulations as well as the specificities of their diagnoses, which can
+potentially account for the varying impact of treatment setting on
+housing.
+
+## Limitations
+
+Due to differences in state policies, with some states regulating
+private agencies or correctional facilities while others don’t, the
+demographic and treatment-related factors might differ across states,
+which has the potential to impact our research result. Second, our
+quality of life indicators are limited to the time periods near clients’
+admission or discharge point, so our analysis cannot take into account
+changes in quality of life after treatment in longer terms. In addition,
+since there are no data on the specific treatment each individual
+receives, our research are limited regarding which specific treatment
+conditions will have a significant impact on quality of life outcome
+post-discharge.
+
+## Future Directions
+
+This project can be taken in many different directions. While working on
+this, our experts recommended to us to examine state policy to see how
+it impacts outcomes. There are significant discrepancies in state
+policies and the facilities / treatment services they can provide. For
+example, running out of beds or being unable to provide outpatient
+treatment is very common in Minnesota. If a team could access that data,
+it could be a rich domain to explore, especially when connecting it to
+Length of Stay and Treatment Service Type (SERVICES).
+
+Additionally obviously this is only the 2021 TEDS_D dataset. There is
+always the opportunity to go back in time and compare rates to our
+findings to see how they size up. This could even be done in conjunction
+with the state policy and funding route in order to gain a very
+comprehensive view of the evolution of the quality of life indicators
+and their relationships to the state.
+
+Finally, our analysis covered only one period: from admission to 30 days
+prior to discharge. This is a very narrow scope, therefore collecting
+more data through a new dataset or finding willing participants to share
+their housing, employment, and frequency of use statuses prior to and
+post treatment would greatly expand our understanding of these issues
+and help make our findings more accurate.
