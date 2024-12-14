@@ -17,3 +17,18 @@ The dataset we use in our analysis is the Substance Abuse and Mental Health Serv
 ### Packages to install in R
 
 The following code chunk includes the required R packages needed to run our analyses. To install these packages, copy the following code chunk and run it in your RStudio console
+
+```r
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tidyverse")
+install.packages("labelled")
+install.packages("haven")
+install.packages("naniar")
+install.packages("mde")
+install.packages("vip")
+install.packages("tidymodels")
+install.packages("ranger")
+install.packages("randomForest")
+install.packages("mlbench")
+```
