@@ -31,4 +31,8 @@ install.packages("tidymodels")
 install.packages("ranger")
 install.packages("randomForest")
 install.packages("mlbench")
+install.packages("ggalluvial")
+install.packages("ggmosaic")
+install.packages("purrr")
+install.packages("data.table")
 ```
