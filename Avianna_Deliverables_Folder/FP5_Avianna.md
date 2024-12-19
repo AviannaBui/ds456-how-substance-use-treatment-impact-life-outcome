@@ -1,31 +1,14 @@
----
-title: "Predict Substance Use Treatment Impact on Employment Outcome"
-author: "Avianna Bui"
-output: github_document
----
+Predict Substance Use Treatment Impact on Employment Outcome
+================
+Avianna Bui
 
-```{r setup, include=FALSE, message = F, warning=F}
-knitr::opts_chunk$set(echo = TRUE)
-library(dplyr)
-library(ggplot2)
-library(tidyverse)
-library(labelled)
-library(haven)
-library(naniar)
-library(mde)
-library(vip)
-library(tidymodels)
-library(ranger)
-library(randomForest)
-library(mlbench)
-tidymodels_prefer()
-```
-
-My research question centers on exploring the impact of substance use treatment on employment outcome after discharge for substance use patients in public-funded facilities. 
+My research question centers on exploring the impact of substance use
+treatment on employment outcome after discharge for substance use
+patients in public-funded facilities.
 
 ## Data Loading
 
-```{r}
+``` r
 df <- get(load("tedsd_puf_2021_r.RData")) %>%
   mutate(across(everything(), haven::as_factor))
 ```
@@ -34,7 +17,7 @@ df <- get(load("tedsd_puf_2021_r.RData")) %>%
 
 ### Data Transformation for Random Forest Model
 
-```{r, message = F, warning=F}
+``` r
 ml_data <- df %>%
   select(c(EDUC, MARSTAT, RACE, ETHNIC, AGE, GENDER, VET, EMPLOY, EMPLOY_D, LIVARAG_D, LIVARAG, FREQ1_D, FREQ1, FRSTUSE1, PSOURCE, DSMCRIT, STFIPS, PSYPROB, HLTHINS, NOPRIOR, ARRESTS_D, LOS, SERVICES, SUB1, SUB2, SUB3, FREQ_ATND_SELF_HELP_D, METHUSE, REASON)) %>%
   recode_as_na(value = -9) %>%
@@ -51,7 +34,7 @@ ml_data <- df %>%
 
 ### Random Forest Model Specification
 
-```{r}
+``` r
 set.seed(1111)
 rf_spec <- rand_forest() %>%
   set_engine(engine = 'ranger') %>% 
@@ -73,11 +56,36 @@ rf_fit <- fit(data_wf, data = ml_data)
 rf_fit
 ```
 
+    ## ══ Workflow [trained] ══════════════════════════════════════════════════════════
+    ## Preprocessor: Recipe
+    ## Model: rand_forest()
+    ## 
+    ## ── Preprocessor ────────────────────────────────────────────────────────────────
+    ## 0 Recipe Steps
+    ## 
+    ## ── Model ───────────────────────────────────────────────────────────────────────
+    ## Ranger result
+    ## 
+    ## Call:
+    ##  ranger::ranger(x = maybe_data_frame(x), y = y, num.trees = ~500,      min.node.size = min_rows(~2, x), probability = ~FALSE, importance = ~"impurity",      num.threads = 1, verbose = FALSE, seed = sample.int(10^5,          1)) 
+    ## 
+    ## Type:                             Classification 
+    ## Number of trees:                  500 
+    ## Sample size:                      56197 
+    ## Number of independent variables:  27 
+    ## Mtry:                             5 
+    ## Target node size:                 2 
+    ## Variable importance mode:         impurity 
+    ## Splitrule:                        gini 
+    ## OOB prediction error:             7.41 %
+
 ### Model Evaluation
 
-> Result: On average, we can correctly predict employment at discharge for new substance use patients outside the datasets around 92.6% of the times
+> Result: On average, we can correctly predict employment at discharge
+> for new substance use patients outside the datasets around 92.6% of
+> the times
 
-```{r}
+``` r
 rf_OOB_output <- function(fit_model, model_label, truth){
     tibble(
           .pred_Unemployed = fit_model %>% extract_fit_engine() %>% pluck('predictions'), #OOB predictions
@@ -92,11 +100,21 @@ output %>%
     accuracy(truth = EMPLOY_D, estimate = .pred_Unemployed) # print accuracy
 ```
 
+    ## # A tibble: 1 × 3
+    ##   .metric  .estimator .estimate
+    ##   <chr>    <chr>          <dbl>
+    ## 1 accuracy binary         0.926
+
 ### Feature Importance
 
-> Result: An individual's employment status at admission holds the highest predictive ability to help predict employment at discharge, followed by treatment services type at admission and length of stay, which are the 2 treatment-related variables I will focus on examining in my visualization. Housing status at discharge and admission, as well as the clients' state also have high predictive power
+> Result: An individual’s employment status at admission holds the
+> highest predictive ability to help predict employment at discharge,
+> followed by treatment services type at admission and length of stay,
+> which are the 2 treatment-related variables I will focus on examining
+> in my visualization. Housing status at discharge and admission, as
+> well as the clients’ state also have high predictive power
 
-```{r fig.height = 7, fig.width = 6}
+``` r
 rf_fit %>%
     extract_fit_engine() %>%
     vip(num_features = 6, mapping = aes(fill = .data[["Variable"]])) +
@@ -118,14 +136,17 @@ rf_fit %>%
                             y = 0), hjust = 0, color = "black", size = 4, fontface = "bold")
 ```
 
+![](FP5_Avianna_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ## Data Visualization
 
-In this section, I visualize changes in patients' employment outcome with respect to the two most important treatment-related factors: length of stay in treatment facilities and treatment services at admission.
+In this section, I visualize changes in patients’ employment outcome
+with respect to the two most important treatment-related factors: length
+of stay in treatment facilities and treatment services at admission.
 
 ### Data Transformation
 
-```{r, warning = F, message = F}
+``` r
 df_viz <- df %>%
   select(EMPLOY, EMPLOY_D, LOS, REASON, SERVICES) %>%
   filter(REASON == "Treatment completed") %>% # keep only patients who completed treatment
@@ -148,9 +169,15 @@ df_viz <- df %>%
 
 ### Visualization: Length of Stay & Employment Outcome
 
-> Result: The employment outcome for the majority of patients after treatment remains similar to their employment status at admission. Nonetheless, longer length of stay demonstrates a positive relationship with employment outcome, since unemployed people at admission with treatment length over a month, especially those with over 90 days of stays, are more likely to become employed at discharge.  
+> Result: The employment outcome for the majority of patients after
+> treatment remains similar to their employment status at admission.
+> Nonetheless, longer length of stay demonstrates a positive
+> relationship with employment outcome, since unemployed people at
+> admission with treatment length over a month, especially those with
+> over 90 days of stays, are more likely to become employed at
+> discharge.
 
-```{r fig.height = 7, fig.width = 5}
+``` r
 df_viz %>%
   count(lengthOfStay, EMPLOYMENT_CHANGE) %>%
   group_by(lengthOfStay) %>%
@@ -176,11 +203,20 @@ df_viz %>%
         axis.text.x = element_text(size = 12, face = "bold"))
 ```
 
+![](FP5_Avianna_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
 ### Visualization: Treatment Services at Admission & Employment Outcome
 
-> Result: People admitted to ambulatory care setting are more likely to improve their employment outcome after treatment. Meanwhile, a higher proportion of clients admitted to rehab/residential treatment setting turns unemployed after their discharge. We hypothesize that this happens due to the fact that the inpatient nature of rehab/residential treatment requires clients to skip work, coupled with a lack of opportunities to network and interview for new jobs, causes clients to lose their employment and unable to find new jobs
+> Result: People admitted to ambulatory care setting are more likely to
+> improve their employment outcome after treatment. Meanwhile, a higher
+> proportion of clients admitted to rehab/residential treatment setting
+> turns unemployed after their discharge. We hypothesize that this
+> happens due to the fact that the inpatient nature of rehab/residential
+> treatment requires clients to skip work, coupled with a lack of
+> opportunities to network and interview for new jobs, causes clients to
+> lose their employment and unable to find new jobs
 
-```{r warning = F, fig.height = 7, fig.width = 6}
+``` r
 df_viz %>%
   count(SERVICES, EMPLOYMENT_CHANGE) %>%
   group_by(SERVICES) %>%
@@ -205,3 +241,5 @@ geom_bar(stat = "identity", position = "fill") +
         axis.title.x = element_text(size = 14, face = "bold"),
         axis.text.x = element_text(size = 12, face = "bold"))
 ```
+
+![](FP5_Avianna_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
