@@ -10,7 +10,7 @@ This Github Repository includes a Final Narrative markdown file, with informatio
 
 ### Instructions to Download the Dataset
 
-The dataset we use in our analysis is the Substance Abuse and Mental Health Services Administration (SAMHSA)’s Treatment Episode Data Set in 2021, which can be accessed at this link: https://www.samhsa.gov/data/data-we-collect/teds/datafiles?puf_id=47368&data_collection=1022. To download the dataset, select “TEDS-D 2021” for “Choose a dataset” as indicated in the image below, and click on the download link for R to download the dataset in .rdata format.
+The dataset we use in our analysis is the Substance Abuse and Mental Health Services Administration (SAMHSA)’s Treatment Episode Data Set in 2021, which can be accessed at [this link](https://www.samhsa.gov/data/data-we-collect/teds/datafiles?puf_id=47368&data_collection=1022). To download the dataset, select “TEDS-D 2021” for “Choose a dataset” as indicated in the image below, and click on the download link for R to download the dataset in .rdata format.
 
 ![](download_instructions.png)
 
